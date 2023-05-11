@@ -1,6 +1,7 @@
 import express, { json } from "express";
 import db from "./database/database.connection.js";
 import joi from "joi";
+import dayjs from "dayjs";
 
 const app = express();
 app.use(json());
@@ -44,7 +45,7 @@ app.post("/games", async (req, res) => {
 			`INSERT INTO games (name, image, "stockTotal", "pricePerDay") VALUES ($1, $2, $3, $4)`,
 			[name, image, stockTotal, pricePerDay]
 		);
-		res.sendStatus(200);
+		res.sendStatus(201);
 	} catch (err) {
 		res.status(500).send(err.message);
 	}
@@ -63,7 +64,7 @@ app.get("/customers/:id", async (req, res) => {
 	try {
 		const user = await db.query("SELECT * FROM customers WHERE id=$1", [id]);
 		if (!user) res.sendStatus(404);
-		res.send(user.rows);
+		res.send(user.rows[0]);
 	} catch (err) {
 		res.send(err.message);
 	}
@@ -139,6 +140,54 @@ app.put("/customers/:id", async (req, res) => {
 		);
 
 		res.sendStatus(200);
+	} catch (err) {
+		res.send(err.message);
+	}
+});
+app.get("/rentals", async (req, res) => {
+	try {
+		const gameRentals =
+			await db.query(`SELECT rentals.*, games.id AS "gameId", games.name AS "gameName", customers.id AS "customerId", customers.name AS "customerName"
+		FROM rentals
+		JOIN customers ON rentals."customerId" = customers.id
+		JOIN games ON rentals."gameId" = games.id;
+		`);
+
+		res.send(gameRentals.rows);
+	} catch (err) {
+		res.send(err.message);
+	}
+});
+app.post("/rentals", async (req, res) => {
+	const { customerId, gameId, daysRented } = req.body;
+
+	try {
+		const verifyCustomer = await db.query(
+			"SELECT * FROM customers WHERE id=$1;",
+			[customerId]
+		);
+		const verifyGame = await db.query("SELECT * FROM games WHERE id=$1;", [
+			gameId,
+		]);
+		if (!verifyCustomer || !verifyGame || !daysRented > 0)
+			return res.sendStatus(400);
+
+		const price = verifyGame.rows[0].pricePerDay * daysRented;
+
+		await db.query(
+			`INSERT INTO rentals ("customerId", "gameId", "rentDate", "daysRented", "returnDate", "originalPrice", "delayFee" ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+			[
+				verifyCustomer.rows[0].id,
+				verifyGame.rows[0].id,
+				dayjs().format("DD/MM/YYYY"),
+				daysRented,
+				null,
+				price,
+				null,
+			]
+		);
+
+		res.sendStatus(201);
 	} catch (err) {
 		res.send(err.message);
 	}
