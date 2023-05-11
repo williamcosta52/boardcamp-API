@@ -68,5 +68,44 @@ app.get("/customers/:id", async (req, res) => {
 		res.send(err.message);
 	}
 });
+app.post("/customers", async (req, res) => {
+	const { name, phone, cpf, birthday } = req.body;
+	try {
+		const userSchema = joi.object({
+			name: joi.string().required().min(1),
+			phone: joi.string().required().min(10).max(11),
+			cpf: joi.string().required().min(11).max(11),
+			birthday: joi.date().required(),
+		});
+		const validation = userSchema.validate(
+			{
+				name: name,
+				phone: phone,
+				cpf: cpf,
+				birthday: birthday,
+			},
+			{ abortEarly: false }
+		);
+
+		if (validation.error) {
+			const errors = validation.error.details.map((d) => d.message);
+			return res.status(400).send(errors);
+		}
+
+		const verifyUser = await db.query("SELECT * FROM customers WHERE cpf=$1;", [
+			cpf,
+		]);
+		if (verifyUser) return res.sendStatus(409);
+
+		await db.query(
+			"INSERT INTO customers (name, phone, cpf, birthday) VALUES ($1, $2, $3, $4);",
+			[name, phone, cpf, birthday]
+		);
+
+		res.sendStatus(201);
+	} catch (err) {
+		res.send(err.message);
+	}
+});
 
 app.listen(5000, () => console.log("Rodando na porta 5000"));
