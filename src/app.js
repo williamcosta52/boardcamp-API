@@ -72,6 +72,10 @@ app.get("/customers/:id", async (req, res) => {
 app.post("/customers", async (req, res) => {
 	const { name, phone, cpf, birthday } = req.body;
 	try {
+		const verifyUser = await db.query("SELECT * FROM customers WHERE cpf=$1;", [
+			cpf,
+		]);
+		if (verifyUser.rows[0].length === 0) return res.sendStatus(409);
 		const userSchema = joi.object({
 			name: joi.string().required().min(1),
 			phone: joi.string().required().min(10).max(11),
@@ -87,22 +91,14 @@ app.post("/customers", async (req, res) => {
 			},
 			{ abortEarly: false }
 		);
-
 		if (validation.error) {
 			const errors = validation.error.details.map((d) => d.message);
 			return res.status(400).send(errors);
 		}
-
-		const verifyUser = await db.query("SELECT * FROM customers WHERE cpf=$1;", [
-			cpf,
-		]);
-		if (verifyUser) return res.sendStatus(409);
-
 		await db.query(
 			"INSERT INTO customers (name, phone, cpf, birthday) VALUES ($1, $2, $3, $4);",
 			[name, phone, cpf, birthday]
 		);
-
 		res.sendStatus(201);
 	} catch (err) {
 		res.send(err.message);
