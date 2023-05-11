@@ -107,5 +107,41 @@ app.post("/customers", async (req, res) => {
 		res.send(err.message);
 	}
 });
+app.put("/customers/:id", async (req, res) => {
+	const { id } = req.params;
+	const { name, phone, cpf, birthday } = req.body;
+
+	try {
+		const userSchema = joi.object({
+			name: joi.string().required().min(1),
+			phone: joi.string().required().min(10).max(11),
+			cpf: joi.string().required().min(11).max(11),
+			birthday: joi.date().required(),
+		});
+		const validation = userSchema.validate(
+			{
+				name: name,
+				phone: phone,
+				cpf: cpf,
+				birthday: birthday,
+			},
+			{ abortEarly: false }
+		);
+
+		if (validation.error) {
+			const errors = validation.error.details.map((d) => d.message);
+			return res.status(400).send(errors);
+		}
+
+		await db.query(
+			"UPDATE customers SET name=$1, phone=$2, cpf=$3, birthday=$4 WHERE id=$5;",
+			[name, phone, cpf, birthday, id]
+		);
+
+		res.sendStatus(200);
+	} catch (err) {
+		res.send(err.message);
+	}
+});
 
 app.listen(5000, () => console.log("Rodando na porta 5000"));
