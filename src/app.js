@@ -192,5 +192,14 @@ app.post("/rentals", async (req, res) => {
 		res.send(err.message);
 	}
 });
+app.post("/rentals/:id/return", async (req, res) => {
+	const { id } = req.params;
+
+	try {
+		res.sendStatus(200);
+	} catch (err) {
+		res.send(err.message);
+	}
+});
 
 app.listen(5000, () => console.log("Rodando na porta 5000"));
