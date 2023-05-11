@@ -75,7 +75,7 @@ app.post("/customers", async (req, res) => {
 		const verifyUser = await db.query("SELECT * FROM customers WHERE cpf=$1;", [
 			cpf,
 		]);
-		if (verifyUser.rows[0].length === 0) return res.sendStatus(409);
+		if (!verifyUser.rows.length) return res.sendStatus(409);
 		const userSchema = joi.object({
 			name: joi.string().required().min(1),
 			phone: joi.string().required().min(10).max(11),
