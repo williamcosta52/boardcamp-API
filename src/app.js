@@ -49,5 +49,24 @@ app.post("/games", async (req, res) => {
 		res.status(500).send(err.message);
 	}
 });
+app.get("/customers", async (req, res) => {
+	try {
+		const customersList = await db.query(`SELECT * FROM customers;`);
+		res.send(customersList.rows);
+	} catch (err) {
+		res.send(err.message);
+	}
+});
+app.get("/customers/:id", async (req, res) => {
+	const { id } = req.params;
+
+	try {
+		const user = await db.query("SELECT * FROM customers WHERE id=$1", [id]);
+		if (!user) res.sendStatus(404);
+		res.send(user.rows);
+	} catch (err) {
+		res.send(err.message);
+	}
+});
 
 app.listen(5000, () => console.log("Rodando na porta 5000"));
