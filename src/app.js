@@ -53,7 +53,9 @@ app.post("/games", async (req, res) => {
 app.get("/customers", async (req, res) => {
 	try {
 		const customersList = await db.query(`SELECT * FROM customers;`);
-		res.send(customersList.rows);
+		const customers = customersList.rows;
+
+		res.send({ customers });
 	} catch (err) {
 		res.send(err.message);
 	}
