@@ -70,10 +70,7 @@ app.get("/customers/:id", async (req, res) => {
 
 		if (user.rows.length === 0) return res.sendStatus(404);
 
-		const sendUSer = {
-			customers: user.rows[0],
-		};
-		res.send(sendUSer);
+		res.send(user.rows);
 	} catch (err) {
 		res.send(err.message);
 	}
