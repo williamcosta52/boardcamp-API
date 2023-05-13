@@ -53,9 +53,11 @@ app.post("/games", async (req, res) => {
 app.get("/customers", async (req, res) => {
 	try {
 		const customersList = await db.query(`SELECT * FROM customers;`);
-		const customers = customersList.rows;
+		const customers = {
+			customers: customersList.rows,
+		};
 
-		res.send({ customers });
+		res.send(customers);
 	} catch (err) {
 		res.send(err.message);
 	}
@@ -67,7 +69,11 @@ app.get("/customers/:id", async (req, res) => {
 		const user = await db.query("SELECT * FROM customers WHERE id=$1", [id]);
 
 		if (user.rows.length === 0) return res.sendStatus(404);
-		res.send(user.rows);
+
+		const sendUSer = {
+			customers: user.rows[0],
+		};
+		res.send(sendUSer);
 	} catch (err) {
 		res.send(err.message);
 	}
@@ -142,7 +148,7 @@ app.put("/customers/:id", async (req, res) => {
 			cpf,
 		]);
 
-		if (verifyUser.rows[0]) return res.sendStatus(409);
+		if (id != verifyUser.rows[0].id) return res.sendStatus(409);
 
 		await db.query(
 			"UPDATE customers SET name=$1, phone=$2, cpf=$3, birthday=$4 WHERE id=$5;",
