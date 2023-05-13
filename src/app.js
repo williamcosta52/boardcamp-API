@@ -84,14 +84,7 @@ app.post("/customers", async (req, res) => {
 				.string()
 				.required()
 				.regex(/^\d{11}$/),
-			birthday: joi
-				.date()
-				.iso()
-				.required()
-				.options({
-					convert: true,
-					output: { format: "YYYY-MM-DD" },
-				}),
+			birthday: joi.date().iso().required().raw(),
 		});
 		const validation = userSchema.validate(
 			{
