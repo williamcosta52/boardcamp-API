@@ -63,7 +63,8 @@ app.get("/customers/:id", async (req, res) => {
 
 	try {
 		const user = await db.query("SELECT * FROM customers WHERE id=$1", [id]);
-		if (!user) res.sendStatus(404);
+
+		if (user.rows.length === 0) return res.sendStatus(404);
 		res.send(user.rows[0]);
 	} catch (err) {
 		res.send(err.message);
@@ -75,11 +76,14 @@ app.post("/customers", async (req, res) => {
 		const verifyUser = await db.query("SELECT * FROM customers WHERE cpf=$1;", [
 			cpf,
 		]);
-		if (verifyUser.rows === []) return res.sendStatus(409);
+		if (verifyUser.rows[0]) return res.sendStatus(409);
 		const userSchema = joi.object({
 			name: joi.string().required().min(1),
 			phone: joi.string().required().min(10).max(11),
-			cpf: joi.string().required().min(11).max(11),
+			cpf: joi
+				.string()
+				.required()
+				.regex(/^\d{11}$/),
 			birthday: joi.date().required(),
 		});
 		const validation = userSchema.validate(
@@ -112,7 +116,10 @@ app.put("/customers/:id", async (req, res) => {
 		const userSchema = joi.object({
 			name: joi.string().required().min(1),
 			phone: joi.string().required().min(10).max(11),
-			cpf: joi.string().required().min(11).max(11),
+			cpf: joi
+				.string()
+				.required()
+				.regex(/^\d{11}$/),
 			birthday: joi.date().required(),
 		});
 		const validation = userSchema.validate(
@@ -175,7 +182,7 @@ app.post("/rentals", async (req, res) => {
 			[
 				verifyCustomer.rows[0].id,
 				verifyGame.rows[0].id,
-				dayjs().format("DD/MM/YYYY"),
+				dayjs().format("YYYY/MM/DD"),
 				daysRented,
 				null,
 				price,
