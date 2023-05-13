@@ -65,7 +65,7 @@ app.get("/customers/:id", async (req, res) => {
 		const user = await db.query("SELECT * FROM customers WHERE id=$1", [id]);
 
 		if (user.rows.length === 0) return res.sendStatus(404);
-		res.send(user.rows[0]);
+		res.send(user.rows);
 	} catch (err) {
 		res.send(err.message);
 	}
@@ -84,7 +84,14 @@ app.post("/customers", async (req, res) => {
 				.string()
 				.required()
 				.regex(/^\d{11}$/),
-			birthday: joi.date().required(),
+			birthday: joi
+				.date()
+				.iso()
+				.required()
+				.options({
+					convert: true,
+					output: { format: "YYYY-MM-DD" },
+				}),
 		});
 		const validation = userSchema.validate(
 			{
@@ -136,6 +143,11 @@ app.put("/customers/:id", async (req, res) => {
 			const errors = validation.error.details.map((d) => d.message);
 			return res.status(400).send(errors);
 		}
+		const verifyUser = await db.query(`SELECT * FROM customers WHERE cpf=$1`, [
+			cpf,
+		]);
+
+		if (verifyUser.rows[0]) return res.sendStatus(409);
 
 		await db.query(
 			"UPDATE customers SET name=$1, phone=$2, cpf=$3, birthday=$4 WHERE id=$5;",
@@ -150,12 +162,10 @@ app.put("/customers/:id", async (req, res) => {
 app.get("/rentals", async (req, res) => {
 	try {
 		const gameRentals =
-			await db.query(`SELECT rentals.*, games.id AS "gameId", games.name AS "gameName", customers.id AS "customerId", customers.name AS "customerName"
-		FROM rentals
-		JOIN customers ON rentals."customerId" = customers.id
-		JOIN games ON rentals."gameId" = games.id;
-		`);
-
+			await db.query(`SELECT rentals.id, rentals."customerId", rentals."gameId", rentals."rentDate", rentals."daysRented", rentals."returnDate", rentals."originalPrice", rentals."delayFee", customers.id AS customer_id, customers.name AS customer_name, games.id AS game_id, games.name AS game_name
+			FROM rentals
+			JOIN customers ON rentals."customerId" = customers.id
+			JOIN games ON rentals."gameId" = games.id;`);
 		res.send(gameRentals.rows);
 	} catch (err) {
 		res.send(err.message);
@@ -163,6 +173,8 @@ app.get("/rentals", async (req, res) => {
 });
 app.post("/rentals", async (req, res) => {
 	const { customerId, gameId, daysRented } = req.body;
+
+	if (daysRented <= 0) return res.sendStatus(400);
 
 	try {
 		const verifyCustomer = await db.query(
@@ -172,8 +184,10 @@ app.post("/rentals", async (req, res) => {
 		const verifyGame = await db.query("SELECT * FROM games WHERE id=$1;", [
 			gameId,
 		]);
-		if (!verifyCustomer || !verifyGame || !daysRented > 0)
-			return res.sendStatus(400);
+
+		if (verifyGame.rows[0].stockTotal === 0) return res.sendStatus(400);
+
+		if (!verifyCustomer || !verifyGame) return res.sendStatus(400);
 
 		const price = verifyGame.rows[0].pricePerDay * daysRented;
 
