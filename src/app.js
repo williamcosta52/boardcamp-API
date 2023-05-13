@@ -157,7 +157,7 @@ app.put("/customers/:id", async (req, res) => {
 app.get("/rentals", async (req, res) => {
 	try {
 		const gameRentals =
-			await db.query(`SELECT rentals.id, rentals."customerId", rentals."gameId", rentals."rentDate", rentals."daysRented", rentals."returnDate", rentals."originalPrice", rentals."delayFee", customers.id AS customer_id, customers.name AS customer_name, games.id AS game_id, games.name AS game_name
+			await db.query(`SELECT rentals.id, rentals."customerId", rentals."gameId", rentals."rentDate", rentals."daysRented", rentals."returnDate", rentals."originalPrice", rentals."delayFee", customers.id AS customer_id, customers.name AS "customerName", games.name AS "gameName"
 			FROM rentals
 			JOIN customers ON rentals."customerId" = customers.id
 			JOIN games ON rentals."gameId" = games.id;`);
