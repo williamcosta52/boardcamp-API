@@ -53,11 +53,8 @@ app.post("/games", async (req, res) => {
 app.get("/customers", async (req, res) => {
 	try {
 		const customersList = await db.query(`SELECT * FROM customers;`);
-		const customers = {
-			customers: customersList.rows,
-		};
 
-		res.send(customers);
+		res.send(customersList.rows);
 	} catch (err) {
 		res.send(err.message);
 	}
@@ -70,7 +67,11 @@ app.get("/customers/:id", async (req, res) => {
 
 		if (user.rows.length === 0) return res.sendStatus(404);
 
-		res.send(user.rows);
+		const sendCustomers = {
+			customers: user.rows,
+		};
+
+		res.send(sendCustomers);
 	} catch (err) {
 		res.send(err.message);
 	}
@@ -125,7 +126,7 @@ app.put("/customers/:id", async (req, res) => {
 				.string()
 				.required()
 				.regex(/^\d{11}$/),
-			birthday: joi.date().required(),
+			birthday: joi.date().iso().required().raw(),
 		});
 		const validation = userSchema.validate(
 			{
@@ -160,11 +161,38 @@ app.put("/customers/:id", async (req, res) => {
 app.get("/rentals", async (req, res) => {
 	try {
 		const gameRentals =
-			await db.query(`SELECT rentals.id, rentals."customerId", rentals."gameId", rentals."rentDate", rentals."daysRented", rentals."returnDate", rentals."originalPrice", rentals."delayFee", customers.id AS customer_id, customers.name AS "customerName", games.name AS "gameName"
+			await db.query(`SELECT rentals.id, rentals."customerId", rentals."gameId", rentals."rentDate", rentals."daysRented", rentals."returnDate", rentals."originalPrice", rentals."delayFee", customers.name AS "customerName", games.name AS "gameName"
 			FROM rentals
 			JOIN customers ON rentals."customerId" = customers.id
 			JOIN games ON rentals."gameId" = games.id;`);
-		res.send(gameRentals.rows);
+
+		const sendRental = gameRentals.rows.map((rental) => {
+			const rentalInfo = {
+				rentDate: rental.rentDate,
+				originalPrice: rental.originalPrice,
+				delayFee: rental.delayFee,
+			};
+			const rentalsInfo = {
+				customer: {
+					id: rental.customerId,
+					name: rental.customerName,
+				},
+				game: {
+					id: rental.gameId,
+					name: rental.gameName,
+				},
+			};
+			delete rental.customerId;
+			delete rental.customerName;
+			delete rental.gameId;
+			delete rental.gameName;
+			return {
+				...rental,
+				...rentalsInfo,
+				...rentalInfo,
+			};
+		});
+		res.send(sendRental);
 	} catch (err) {
 		res.send(err.message);
 	}
@@ -183,7 +211,7 @@ app.post("/rentals", async (req, res) => {
 			gameId,
 		]);
 
-		if (verifyGame.rows[0].stockTotal === 0) return res.sendStatus(400);
+		if (verifyGame.rows[0].stockTotal <= 0) return res.sendStatus(400);
 
 		if (!verifyCustomer || !verifyGame) return res.sendStatus(400);
 
@@ -201,6 +229,12 @@ app.post("/rentals", async (req, res) => {
 				null,
 			]
 		);
+		const stock = verifyGame.rows[0].stockTotal - 1;
+
+		await db.query(`UPDATE games SET "stockTotal"=$1 WHERE id=$2`, [
+			stock,
+			verifyGame.rows[0].id,
+		]);
 
 		res.sendStatus(201);
 	} catch (err) {
