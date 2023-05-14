@@ -56,7 +56,7 @@ app.get("/customers", async (req, res) => {
 
 		const formattedCustomers = customersList.rows.map((customer) => {
 			const date = new Date(customer.birthday);
-			const formattedDate = date.toLocaleDateString("pt-BR");
+			const formattedDate = date.toLocaleDateString("fr-CA");
 			return { ...customer, birthday: formattedDate };
 		});
 
@@ -75,11 +75,11 @@ app.get("/customers/:id", async (req, res) => {
 
 		const formattedCustomer = user.rows.map((customer) => {
 			const date = new Date(customer.birthday);
-			const formattedDate = date.toLocaleDateString("pt-BR");
+			const formattedDate = date.toLocaleDateString("fr-CA");
 			return { ...customer, birthday: formattedDate };
 		});
 
-		res.send(formattedCustomer);
+		res.send(formattedCustomer[0]);
 	} catch (err) {
 		res.send(err.message);
 	}
