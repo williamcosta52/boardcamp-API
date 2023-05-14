@@ -54,7 +54,13 @@ app.get("/customers", async (req, res) => {
 	try {
 		const customersList = await db.query(`SELECT * FROM customers;`);
 
-		res.send(customersList.rows);
+		const formattedCustomers = customersList.rows.map((customer) => {
+			const date = new Date(customer.birthday);
+			const formattedDate = date.toLocaleDateString("pt-BR");
+			return { ...customer, birthday: formattedDate };
+		});
+
+		res.status(200).send(formattedCustomers);
 	} catch (err) {
 		res.send(err.message);
 	}
@@ -67,11 +73,7 @@ app.get("/customers/:id", async (req, res) => {
 
 		if (user.rows.length === 0) return res.sendStatus(404);
 
-		const sendCustomers = {
-			customers: user.rows,
-		};
-
-		res.send(sendCustomers);
+		res.send(user.rows[0]);
 	} catch (err) {
 		res.send(err.message);
 	}
@@ -82,6 +84,7 @@ app.post("/customers", async (req, res) => {
 		const verifyUser = await db.query("SELECT * FROM customers WHERE cpf=$1;", [
 			cpf,
 		]);
+
 		if (verifyUser.rows[0]) return res.sendStatus(409);
 		const userSchema = joi.object({
 			name: joi.string().required().min(1),
@@ -105,9 +108,11 @@ app.post("/customers", async (req, res) => {
 			const errors = validation.error.details.map((d) => d.message);
 			return res.status(400).send(errors);
 		}
+		const date = new Date(birthday);
+		const formattedBirthday = date.toISOString().slice(0, 10);
 		await db.query(
 			"INSERT INTO customers (name, phone, cpf, birthday) VALUES ($1, $2, $3, $4);",
-			[name, phone, cpf, birthday]
+			[name, phone, cpf, formattedBirthday]
 		);
 		res.status(201).send();
 	} catch (err) {
@@ -148,9 +153,12 @@ app.put("/customers/:id", async (req, res) => {
 
 		if (id != verifyUser.rows[0].id) return res.sendStatus(409);
 
+		const date = new Date(birthday);
+		const formattedBirthday = date.toISOString().slice(0, 10);
+
 		await db.query(
 			"UPDATE customers SET name=$1, phone=$2, cpf=$3, birthday=$4 WHERE id=$5;",
-			[name, phone, cpf, birthday, id]
+			[name, phone, cpf, formattedBirthday, id]
 		);
 
 		res.sendStatus(200);
