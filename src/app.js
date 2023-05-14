@@ -73,7 +73,13 @@ app.get("/customers/:id", async (req, res) => {
 
 		if (user.rows.length === 0) return res.sendStatus(404);
 
-		res.send(user.rows[0]);
+		const formattedCustomer = user.rows.map((customer) => {
+			const date = new Date(customer.birthday);
+			const formattedDate = date.toLocaleDateString("pt-BR");
+			return { ...customer, birthday: formattedDate };
+		});
+
+		res.send(formattedCustomer);
 	} catch (err) {
 		res.send(err.message);
 	}
