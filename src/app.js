@@ -182,7 +182,6 @@ app.get("/rentals", async (req, res) => {
 					name: rental.gameName,
 				},
 			};
-			delete rental.customerId;
 			delete rental.customerName;
 			delete rental.gameId;
 			delete rental.gameName;
