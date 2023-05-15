@@ -299,6 +299,8 @@ app.delete("/rentals/:id", async (req, res) => {
 
 		if (verifyRentals.rows[0].returnDate !== "null") return res.sendStatus(200);
 
+		if (verifyRentals.rows[0].returnDate === "null") return res.sendStatus(400);
+
 		await db.query(`DELETE FROM rentals WHERE id=$1`, [id]);
 
 		res.sendStatus(200);
