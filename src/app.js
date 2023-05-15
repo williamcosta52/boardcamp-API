@@ -261,10 +261,10 @@ app.post("/rentals/:id/return", async (req, res) => {
 
 		const rentDate = dayjs(verifyRental.rows[0].rentDate);
 		const returnDate = dayjs();
-		const daysLate = returnDate.diff(rentDate, "day");
+		const daysLate = Math.ceil(returnDate.diff(rentDate, "day", true));
 		const pricePerDay = verifyRental.rows[0].originalPrice;
 
-		const delayFee = daysLate > 0 ? daysLate * pricePerDay : 0;
+		const delayFee = daysLate > 0 ? daysLate * pricePerDay : 0 ?? 0;
 
 		const date = new Date(dayjs().format("YYYY-MM-DD"));
 		const newDate = date.toISOString().slice(0, 10);
@@ -277,6 +277,7 @@ app.post("/rentals/:id/return", async (req, res) => {
 		res.send(err.message);
 	}
 });
+
 app.delete("/rentals/:id", async (req, res) => {
 	const { id } = req.params;
 
