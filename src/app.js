@@ -151,8 +151,8 @@ app.put("/customers/:id", async (req, res) => {
 			const errors = validation.error.details.map((d) => d.message);
 			return res.status(400).send(errors);
 		}
-		const verifyUser = await db.query(`SELECT * FROM customers WHERE cpf=$1`, [
-			cpf,
+		const verifyUser = await db.query(`SELECT * FROM customers WHERE id=$1`, [
+			id,
 		]);
 		if (Number(id) !== Number(verifyUser.rows[0].id))
 			return res.sendStatus(409);
@@ -270,7 +270,7 @@ app.post("/rentals/:id/return", async (req, res) => {
 		const verifyDate = Number(actDay) - Number(calc); //dia atual - o dia que deveria ter sido entregue == 15 - 13 = 2
 
 		const finalPrice =
-			actDay > calc ? verifyRental.rows[0].originalPrice * verifyDate : 0; //se o dia atual for maior do que o dia que deveria ter sido entreuge, multiplica o valor da diária do jogo pelos dias que passaram
+			actDay > calc && verifyRental.rows[0].originalPrice * verifyDate; //se o dia atual for maior do que o dia que deveria ter sido entregue, multiplica o valor da diária do jogo pelos dias que passaram
 
 		const date = new Date(dayjs().format("YYYY-MM-DD"));
 		const newDate = date.toISOString().slice(0, 10);
@@ -278,6 +278,25 @@ app.post("/rentals/:id/return", async (req, res) => {
 			`UPDATE rentals SET "returnDate"=$1, "delayFee"=$2 WHERE id=$3`,
 			[newDate, finalPrice, id]
 		);
+		res.sendStatus(200);
+	} catch (err) {
+		res.send(err.message);
+	}
+});
+app.delete("/rentals/:id", async (req, res) => {
+	const { id } = req.params;
+
+	try {
+		const verifyRentals = await db.query(`SELECT * FROM rentals WHERE id=$1`, [
+			id,
+		]);
+
+		if (verifyRentals.rows.length === 0) res.sendStatus(404);
+
+		if (verifyRentals.rows[0].returnDate !== "null") return res.sendStatus(400);
+
+		await db.query(`DELETE FROM rentals WHERE id=$1`, [id]);
+
 		res.sendStatus(200);
 	} catch (err) {
 		res.send(err.message);
