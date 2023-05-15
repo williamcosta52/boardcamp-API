@@ -153,9 +153,10 @@ app.put("/customers/:id", async (req, res) => {
 			const errors = validation.error.details.map((d) => d.message);
 			return res.status(400).send(errors);
 		}
-		const verifyUser = await db.query(`SELECT * FROM customers WHERE cpf=$1`, [
-			cpf,
-		]);
+		const verifyUser = await db.query(
+			`SELECT * FROM customers WHERE cpf=$1 AND id != $2`,
+			[cpf, id]
+		);
 
 		if (id != verifyUser.rows[0].id) return res.sendStatus(409);
 
@@ -212,9 +213,7 @@ app.get("/rentals", async (req, res) => {
 });
 app.post("/rentals", async (req, res) => {
 	const { customerId, gameId, daysRented } = req.body;
-
 	if (daysRented <= 0) return res.sendStatus(400);
-
 	try {
 		const verifyCustomer = await db.query(
 			"SELECT * FROM customers WHERE id=$1;",
@@ -223,31 +222,38 @@ app.post("/rentals", async (req, res) => {
 		const verifyGame = await db.query("SELECT * FROM games WHERE id=$1;", [
 			gameId,
 		]);
-		if (!verifyCustomer || !verifyGame) return res.sendStatus(400);
-		if (!verifyGame.rows[0].stockTotal > 0) return res.sendStatus(400);
-		const price = verifyGame.rows[0].pricePerDay * daysRented;
+		if (!verifyCustomer.rows.length || !verifyGame.rows.length)
+			return res.sendStatus(400);
+		const game = verifyGame.rows[0];
+		const stockResult = await db.query(
+			'SELECT COUNT(*) FROM rentals WHERE "gameId" = $1 AND "returnDate" IS NULL;',
+			[gameId]
+		);
+		const stock = game.stockTotal - stockResult.rows[0].count;
+		if (stock <= 0) return res.sendStatus(400);
+		const price = game.pricePerDay * daysRented;
 		await db.query(
 			`INSERT INTO rentals ("customerId", "gameId", "rentDate", "daysRented", "returnDate", "originalPrice", "delayFee" ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 			[
 				verifyCustomer.rows[0].id,
-				verifyGame.rows[0].id,
-				dayjs().format("YYYY/MM/DD"),
+				game.id,
+				dayjs().format(),
 				daysRented,
 				null,
 				price,
 				null,
 			]
 		);
-		const stock = verifyGame.rows[0].stockTotal - 1;
 		await db.query(`UPDATE games SET "stockTotal"=$1 WHERE id=$2`, [
 			stock,
-			verifyGame.rows[0].id,
+			game.id,
 		]);
 		res.sendStatus(201);
 	} catch (err) {
 		res.send(err.message);
 	}
 });
+
 app.post("/rentals/:id/return", async (req, res) => {
 	const { id } = req.params;
 
@@ -257,13 +263,20 @@ app.post("/rentals/:id/return", async (req, res) => {
 		]);
 		if (verifyRental.rows.length === 0) return res.sendStatus(404);
 		if (verifyRental.rows[0].returnDate !== null) return res.sendStatus(400);
+
 		const rentDate = verifyRental.rows[0].rentDate
 			.toISOString()
 			.substring(8, 10);
+
 		const day = rentDate.substring(8, 10);
+
 		const actDay = dayjs().format("DD");
+
 		const verifyDate = Number(actDay) - Number(day);
-		const finalPrice = verifyRental.rows[0].originalPrice * verifyDate;
+
+		const finalPrice =
+			day > actDay ? verifyRental.rows[0].originalPrice * verifyDate : 0;
+
 		const date = new Date(dayjs().format("YYYY-MM-DD"));
 		const newDate = date.toISOString().slice(0, 10);
 		await db.query(
