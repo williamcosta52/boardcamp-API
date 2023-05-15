@@ -85,18 +85,22 @@ export async function postRentalsById(req, res) {
 	const { id } = req.params;
 
 	try {
-		const verifyRental = await db.query(`SELECT * FROM rentals WHERE id=$1`, [
-			id,
-		]);
+		const verifyRental = await db.query(
+			`SELECT r.*, g."pricePerDay"
+		FROM rentals r
+		JOIN games g ON r."gameId" = g.id
+		WHERE r.id =$1;`,
+			[id]
+		);
 		if (verifyRental.rows.length === 0) return res.sendStatus(404);
 		if (verifyRental.rows[0].returnDate !== null) return res.sendStatus(400);
-		const { rentDate, daysRented, originalPrice } = verifyRental.rows[0];
+		const { rentDate, daysRented, pricePerDay } = verifyRental.rows[0];
 		const rentalEnd = new Date();
 		const rentalStart = new Date(rentDate);
 		const delay =
 			(rentalEnd.getTime() - rentalStart.getTime()) / (24 * 60 * 60 * 1000) -
 			daysRented;
-		const delayFee = delay > 0 ? parseInt(delay) * originalPrice : 0;
+		const delayFee = delay > 0 ? parseInt(delay) * pricePerDay : 0;
 		const date = new Date(dayjs().format("YYYY-MM-DD"));
 		const newDate = date.toISOString().slice(0, 10);
 		await db.query(
