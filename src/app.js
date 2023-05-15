@@ -224,7 +224,7 @@ app.post("/rentals", async (req, res) => {
 			gameId,
 		]);
 		if (!verifyCustomer || !verifyGame) return res.sendStatus(400);
-		if (verifyGame.rows[0].stockTotal <= 0) return res.sendStatus(400);
+		if (!verifyGame.rows[0].stockTotal > 0) return res.sendStatus(400);
 		const price = verifyGame.rows[0].pricePerDay * daysRented;
 		await db.query(
 			`INSERT INTO rentals ("customerId", "gameId", "rentDate", "daysRented", "returnDate", "originalPrice", "delayFee" ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
@@ -255,24 +255,21 @@ app.post("/rentals/:id/return", async (req, res) => {
 		const verifyRental = await db.query(`SELECT * FROM rentals WHERE id=$1`, [
 			id,
 		]);
-
 		if (verifyRental.rows.length === 0) return res.sendStatus(404);
 		if (verifyRental.rows[0].returnDate !== null) return res.sendStatus(400);
-
-		const rentDate = verifyRental.rows[0].rentDate;
-		const day = Number(rentDate.substring(8, 10));
-
+		const rentDate = verifyRental.rows[0].rentDate
+			.toISOString()
+			.substring(8, 10);
+		const day = rentDate.substring(8, 10);
 		const actDay = dayjs().format("DD");
-
-		const verifyDate = Number(actDay) - day;
-
+		const verifyDate = Number(actDay) - Number(day);
 		const finalPrice = verifyRental.rows[0].originalPrice * verifyDate;
-
+		const date = new Date(dayjs().format("YYYY-MM-DD"));
+		const newDate = date.toISOString().slice(0, 10);
 		await db.query(
 			`UPDATE rentals SET "returnDate"=$1, "delayFee"=$2 WHERE id=$3`,
-			[dayjs().format("YYYY-MM-DD"), finalPrice, id]
+			[newDate, finalPrice, id]
 		);
-
 		res.sendStatus(200);
 	} catch (err) {
 		res.send(err.message);
