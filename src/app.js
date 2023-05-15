@@ -264,8 +264,12 @@ app.post("/rentals/:id/return", async (req, res) => {
 		const rentalStart = new Date(rentDate);
 		const delay =
 			(rentalEnd.getTime() - rentalStart.getTime()) / (24 * 60 * 60 * 1000) -
-			daysRented;
+			daysRented / 100;
+
+		console.log(delay);
 		const delayFee = delay > 0 ? parseInt(delay) * originalPrice : 0;
+
+		console.log(delayFee);
 
 		const date = new Date(dayjs().format("YYYY-MM-DD"));
 		const newDate = date.toISOString().slice(0, 10);
