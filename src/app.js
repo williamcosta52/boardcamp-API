@@ -128,7 +128,6 @@ app.post("/customers", async (req, res) => {
 app.put("/customers/:id", async (req, res) => {
 	const { id } = req.params;
 	const { name, phone, cpf, birthday } = req.body;
-
 	try {
 		const userSchema = joi.object({
 			name: joi.string().required().min(1),
@@ -148,26 +147,21 @@ app.put("/customers/:id", async (req, res) => {
 			},
 			{ abortEarly: false }
 		);
-
 		if (validation.error) {
 			const errors = validation.error.details.map((d) => d.message);
 			return res.status(400).send(errors);
 		}
-		const verifyUser = await db.query(
-			`SELECT * FROM customers WHERE cpf=$1 AND id != $2`,
-			[cpf, id]
-		);
-
-		if (id != verifyUser.rows[0].id) return res.sendStatus(409);
-
+		const verifyUser = await db.query(`SELECT * FROM customers WHERE cpf=$1`, [
+			cpf,
+		]);
+		if (Number(id) !== Number(verifyUser.rows[0].id))
+			return res.sendStatus(409);
 		const date = new Date(birthday);
 		const formattedDate = date.toLocaleDateString("fr-CA");
-
 		await db.query(
 			"UPDATE customers SET name=$1, phone=$2, cpf=$3, birthday=$4 WHERE id=$5;",
 			[name, phone, cpf, formattedDate, id]
 		);
-
 		res.sendStatus(200);
 	} catch (err) {
 		res.send(err.message);
@@ -267,14 +261,16 @@ app.post("/rentals/:id/return", async (req, res) => {
 			.toISOString()
 			.substring(8, 10);
 
-		const day = rentDate.substring(8, 10);
+		const day = rentDate.substring(8, 10); //dia que foi alugado exemplo : 13
 
-		const actDay = dayjs().format("DD");
+		const actDay = dayjs().format("DD"); //dia atual exemplo : 15
 
-		const verifyDate = Number(actDay) - Number(day);
+		const calc = Number(day) + verifyRental.rows[0].daysRented; //dia que deveria ter sido entregue
+
+		const verifyDate = Number(actDay) - Number(calc); //dia atual - o dia que deveria ter sido entregue == 15 - 13 = 2
 
 		const finalPrice =
-			day > actDay ? verifyRental.rows[0].originalPrice * verifyDate : 0;
+			actDay > calc ? verifyRental.rows[0].originalPrice * verifyDate : 0; //se o dia atual for maior do que o dia que deveria ter sido entreuge, multiplica o valor da diária do jogo pelos dias que passaram
 
 		const date = new Date(dayjs().format("YYYY-MM-DD"));
 		const newDate = date.toISOString().slice(0, 10);
