@@ -259,13 +259,13 @@ app.post("/rentals/:id/return", async (req, res) => {
 		if (verifyRental.rows.length === 0) return res.sendStatus(404);
 		if (verifyRental.rows[0].returnDate !== null) return res.sendStatus(400);
 
-		const { rentDate, daysRented, pricePerDay } = verifyRental.rows[0];
+		const { rentDate, daysRented, originalPrice } = verifyRental.rows[0];
 		const rentalEnd = new Date();
 		const rentalStart = new Date(rentDate);
 		const delay =
 			(rentalEnd.getTime() - rentalStart.getTime()) / (24 * 60 * 60 * 1000) -
 			daysRented;
-		const delayFee = delay > 0 ? parseInt(delay) * pricePerDay : 0;
+		const delayFee = delay > 0 ? parseInt(delay) * originalPrice : 0;
 
 		const date = new Date(dayjs().format("YYYY-MM-DD"));
 		const newDate = date.toISOString().slice(0, 10);
