@@ -151,12 +151,10 @@ app.put("/customers/:id", async (req, res) => {
 			const errors = validation.error.details.map((d) => d.message);
 			return res.status(400).send(errors);
 		}
-		const verifyUser = await db.query(`SELECT * FROM customers WHERE id=$1`, [
-			id,
-		]);
-		const verifyCpf = await db.query(`SELECT * FROM customers WHERE cpf=$1`, [
-			cpf,
-		]);
+		const verifyUser = await db.query(
+			`SELECT * FROM customers WHERE id=$1 OR cpf=$2`,
+			[id, cpf]
+		);
 		if (verifyCpf.rows.length === 0) return res.sendStatus(409);
 		if (Number(id) !== Number(verifyUser.rows[0].id))
 			return res.sendStatus(409);
@@ -261,26 +259,18 @@ app.post("/rentals/:id/return", async (req, res) => {
 		if (verifyRental.rows.length === 0) return res.sendStatus(404);
 		if (verifyRental.rows[0].returnDate !== null) return res.sendStatus(400);
 
-		const rentDate = verifyRental.rows[0].rentDate
-			.toISOString()
-			.substring(8, 10);
+		const rentDate = dayjs(verifyRental.rows[0].rentDate);
+		const returnDate = dayjs();
+		const daysLate = returnDate.diff(rentDate, "day");
+		const pricePerDay = verifyRental.rows[0].originalPrice;
 
-		const day = rentDate.substring(8, 10); //dia que foi alugado exemplo : 13
-
-		const actDay = dayjs().format("DD"); //dia atual exemplo : 15
-
-		const calc = Number(day) + verifyRental.rows[0].daysRented; //dia que deveria ter sido entregue
-
-		const verifyDate = Number(actDay) - Number(calc); //dia atual - o dia que deveria ter sido entregue == 15 - 13 = 2
-
-		const finalPrice =
-			actDay > calc && verifyRental.rows[0].originalPrice * verifyDate; //se o dia atual for maior do que o dia que deveria ter sido entregue, multiplica o valor da diária do jogo pelos dias que passaram
+		const delayFee = daysLate > 0 ? daysLate * pricePerDay : 0;
 
 		const date = new Date(dayjs().format("YYYY-MM-DD"));
 		const newDate = date.toISOString().slice(0, 10);
 		await db.query(
 			`UPDATE rentals SET "returnDate"=$1, "delayFee"=$2 WHERE id=$3`,
-			[newDate, finalPrice, id]
+			[newDate, delayFee, id]
 		);
 		res.sendStatus(200);
 	} catch (err) {
@@ -297,9 +287,9 @@ app.delete("/rentals/:id", async (req, res) => {
 
 		if (verifyRentals.rows.length === 0) res.sendStatus(404);
 
-		if (verifyRentals.rows[0].returnDate !== "null") return res.sendStatus(200);
-
-		if (verifyRentals.rows[0].returnDate === "null") return res.sendStatus(400);
+		if (verifyRentals.rows[0].returnDate === null) {
+			return res.sendStatus(400);
+		}
 
 		await db.query(`DELETE FROM rentals WHERE id=$1`, [id]);
 
