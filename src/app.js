@@ -154,6 +154,10 @@ app.put("/customers/:id", async (req, res) => {
 		const verifyUser = await db.query(`SELECT * FROM customers WHERE id=$1`, [
 			id,
 		]);
+		const verifyCpf = await db.query(`SELECT * FROM customers WHERE cpf=$1`, [
+			cpf,
+		]);
+		if (verifyCpf.rows.length === 0) return res.sendStatus(409);
 		if (Number(id) !== Number(verifyUser.rows[0].id))
 			return res.sendStatus(409);
 		const date = new Date(birthday);
@@ -293,7 +297,7 @@ app.delete("/rentals/:id", async (req, res) => {
 
 		if (verifyRentals.rows.length === 0) res.sendStatus(404);
 
-		if (verifyRentals.rows[0].returnDate !== "null") return res.sendStatus(400);
+		if (verifyRentals.rows[0].returnDate !== "null") return res.sendStatus(200);
 
 		await db.query(`DELETE FROM rentals WHERE id=$1`, [id]);
 
