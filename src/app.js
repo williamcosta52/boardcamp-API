@@ -253,7 +253,6 @@ app.post("/rentals", async (req, res) => {
 		res.send(err.message);
 	}
 });
-
 app.post("/rentals/:id/return", async (req, res) => {
 	const { id } = req.params;
 
