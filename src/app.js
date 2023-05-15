@@ -155,7 +155,7 @@ app.put("/customers/:id", async (req, res) => {
 			`SELECT * FROM customers WHERE id=$1 OR cpf=$2`,
 			[id, cpf]
 		);
-		if (verifyCpf.rows.length === 0) return res.sendStatus(409);
+		if (verifyUser.rows.length === 0) return res.sendStatus(409);
 		if (Number(id) !== Number(verifyUser.rows[0].id))
 			return res.sendStatus(409);
 		const date = new Date(birthday);
@@ -263,8 +263,7 @@ app.post("/rentals/:id/return", async (req, res) => {
 		const returnDate = dayjs();
 		const daysLate = Math.ceil(returnDate.diff(rentDate, "day", true));
 		const pricePerDay = verifyRental.rows[0].originalPrice;
-
-		const delayFee = daysLate > 0 ? daysLate * pricePerDay : 0 ?? 0;
+		const delayFee = daysLate > 0 ? daysLate * Number(pricePerDay) : 0;
 
 		const date = new Date(dayjs().format("YYYY-MM-DD"));
 		const newDate = date.toISOString().slice(0, 10);
@@ -277,7 +276,6 @@ app.post("/rentals/:id/return", async (req, res) => {
 		res.send(err.message);
 	}
 });
-
 app.delete("/rentals/:id", async (req, res) => {
 	const { id } = req.params;
 
